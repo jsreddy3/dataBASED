@@ -40,13 +40,19 @@ def upload_file():
 @app.route('/get_files', methods=['GET'])
 def get_files():
     # Returns a list of all the uploaded files
+    print(uploaded_files)
     return jsonify({"files": uploaded_files})
 
 @app.route('/select_files', methods=['POST'])
 def select_files():
     selected_files = request.json.get('selected_files', [])
-    # TODO: Handle these selected files for the next steps of your process
-    return jsonify({"status": "success", "selected_files": selected_files})
+    # For demonstration purposes, let's grab the first selected file's content
+    first_file_content = ""
+    if selected_files:
+        with open(selected_files[0], 'r') as file:
+            first_file_content = file.read()
+    return jsonify({"status": "success", "selected_files": selected_files, "first_file_content": first_file_content})
+
 
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):

@@ -17,6 +17,18 @@
         <button onclick="submitSelectedFiles()">Submit Selected Files</button>
     </div>
 
+    <!-- Place for displaying file content -->
+    <textarea id="fileContentDisplay" rows="10" cols="50" readonly></textarea>
+
+
+    <div id="chatInterface">
+      <h2>Field Identification Assistant</h2>
+      <div id="chatBox"></div>
+      <input id="userInput" type="text" placeholder="Type your message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  
+
     <!-- Link to our JavaScript file -->
     <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
