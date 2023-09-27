@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+    <title>Upload a File</title>
+</head>
+<body>
+    <h1>Upload your file</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit" value="Upload">
+    </form>
+
+    <!-- Display the list of uploaded files -->
+    <div id="fileList">
+        <h2>Uploaded Files:</h2>
+        <ul id="uploadedFiles"></ul>
+        <button onclick="submitSelectedFiles()">Submit Selected Files</button>
+    </div>
+
+    <!-- Link to our JavaScript file -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
