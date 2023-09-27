@@ -92,14 +92,38 @@ function sendMessage() {
   processUserMessage(userMessage);
 }
 
+function adjustTextareaHeight(textarea) {
+  textarea.style.height = 'auto';  // Reset height
+  textarea.style.height = (textarea.scrollHeight) + 'px';  // Set to content height
+}
+
+function displaySelectedFileContent(content) {
+  let displayArea = document.getElementById("fileContentDisplay");
+  if (displayArea) {
+      displayArea.value = content;
+      adjustTextareaHeight(displayArea);
+  }
+}
+
+
 // Process user's message
 function processUserMessage(message) {
-  // Here, you can interact with GPT API and take actions based on message content.
-  // For now, as a placeholder, we will simulate a GPT response.
-  setTimeout(() => {
-      addMessageToChat("Bot", "Thanks for sharing! Based on your input, I'd recommend these fields: ...");
-  }, 1000);
+  // Send the user's message to the Flask backend
+  fetch('/process_message', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({message: message})
+  })
+  .then(response => response.json())
+  .then(data => {
+      // Handle the model's response
+      let gptResponse = data.gpt_response;
+      addMessageToChat("Bot", gptResponse);
+  });
 }
+
 
 // Start the chat
 initChat();

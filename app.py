@@ -1,5 +1,6 @@
 from flask import Flask, request, redirect, url_for, render_template, jsonify
 from converters import convert_to_txt
+from gpt_helper import analyze_content
 import os
 
 UPLOAD_FOLDER = 'uploads'
