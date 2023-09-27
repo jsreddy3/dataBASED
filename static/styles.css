@@ -1,0 +1,8 @@
+#fileContentDisplay {
+  border: none;
+  outline: none;
+  background-color: #f9f9f9; /* Light gray to differentiate from the background */
+  resize: none; /* To prevent resizing by the user */
+  overflow-y: auto; /* To allow vertical scrolling if the content is too long */
+  width: 100%; /* Use full available width */
+}
