@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, render_template, jsonify
+from flask import Flask, request, redirect, url_for, render_template, jsonify, Response
 from converters import convert_to_txt
 from gpt_helper import analyze_content
 import os
@@ -54,6 +54,11 @@ def select_files():
             first_file_content = file.read()
     return jsonify({"status": "success", "selected_files": selected_files, "first_file_content": first_file_content})
 
+@app.route('/process_message', methods=['POST'])
+def process_message():
+    user_message = request.json.get('message')
+    gpt_response = analyze_content(user_message)
+    return jsonify(gpt_response)
 
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):

@@ -105,6 +105,33 @@ function displaySelectedFileContent(content) {
   }
 }
 
+function displayFields(fields, descriptions) {
+  const suggestedBox = document.getElementById("suggestedFieldsBox");
+
+  // Clear any existing items in the suggestedBox
+  suggestedBox.innerHTML = '';
+
+  fields.forEach((field, index) => {
+      let listItem = document.createElement("li");
+
+      // Create a text node for the field name and a button for selecting
+      let fieldText = document.createTextNode(field + " - " + descriptions[index] + " ");
+      let selectButton = document.createElement("button");
+
+      // Configure the select button
+      selectButton.textContent = "Select";
+      selectButton.onclick = function() {
+          moveFieldToSelected(field);
+          listItem.remove();  // Remove the field from the suggested box
+      };
+
+      // Append the text node and button to the list item, then the list item to the suggestedBox
+      listItem.appendChild(fieldText);
+      listItem.appendChild(selectButton);
+      suggestedBox.appendChild(listItem);
+  });
+}
+
 
 // Process user's message
 function processUserMessage(message) {
@@ -116,14 +143,67 @@ function processUserMessage(message) {
       },
       body: JSON.stringify({message: message})
   })
-  .then(response => response.json())
+  .then(response => {
+      if (!response.ok) {
+          throw new Error('Network response was not ok ' + response.statusText);
+      }
+      return response.json();
+  })
   .then(data => {
-      // Handle the model's response
-      let gptResponse = data.gpt_response;
-      addMessageToChat("Bot", gptResponse);
+      const functionCall = data.function_call;  // Adjusted to match the Python code
+      if(functionCall && functionCall.name === 'identify_fields') {
+          // Assuming args contains fields, descriptions, and naturalResponse properties
+          const {fields, descriptions, naturalResponse} = functionCall.arguments;
+
+          // Display the suggested fields with their descriptions
+          displayFields(fields, descriptions);
+
+          // Display the natural language response in the chat box
+          addMessageToChat("Bot", naturalResponse.trim());
+      } else {
+          console.error("Unexpected response format:", data);
+      }
+  })
+  .catch(error => {
+      console.error('There has been a problem with your fetch operation:', error);
   });
 }
 
+function moveFieldToSelected(field) {
+  const selectedBox = document.getElementById("selectedFieldsBox");
+  let listItem = document.createElement("li");
+  
+  let fieldText = document.createTextNode(field);  // Create a text node for the field name
+  listItem.appendChild(fieldText);  // Append the text node to the list item
+  
+  let deselectButton = document.createElement("button");  // Create a deselect button
+  deselectButton.textContent = "Deselect";
+  deselectButton.onclick = function() {
+      moveFieldToSuggested(field);
+      listItem.remove();
+  };
+  listItem.appendChild(deselectButton);  // Append the deselect button to the list item
+  
+  selectedBox.appendChild(listItem);  // Add to the 'Selected Fields' box
+}
+
+function moveFieldToSuggested(field) {
+  const suggestedBox = document.getElementById("suggestedFieldsBox");
+  let listItem = document.createElement("li");
+  
+  let fieldText = document.createTextNode(field);  // Create a text node for the field name
+  listItem.appendChild(fieldText);  // Append the text node to the list item
+  
+  let selectButton = document.createElement("button");  // Create a select button
+  selectButton.textContent = "Select";
+  selectButton.onclick = function() {
+      moveFieldToSelected(field);
+      listItem.remove();
+  };
+  listItem.appendChild(selectButton);  // Append the select button to the list item
+  
+  suggestedBox.appendChild(listItem);  // Add to the 'Suggested Fields' box
+}
 
 // Start the chat
 initChat();
