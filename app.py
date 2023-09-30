@@ -3,6 +3,7 @@ from converters import convert_to_txt
 from gpt_helper import start_conversation, refine_fields, doc_to_fields
 import os
 import pandas as pd
+import openai
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'doc', 'docx', 'rtf', 'html'}
@@ -15,18 +16,20 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/', methods=['GET', 'POST'])
-def upload_file():
+def upload_files():
     if request.method == 'POST':
-        file = request.files.get('file')
-        if file and allowed_file(file.filename):
-            filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            safe_filename = filename.rsplit('.', 1)[0] + '.txt'
-            if file.filename.rsplit('.', 1)[1].lower() != 'txt':
-                converted_content = convert_to_txt(file)
-                with open(safe_filename, 'w') as txt_file:
-                    txt_file.write(converted_content)
-            else:
-                file.save(safe_filename)
+        files = request.files.getlist('file')
+
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+                safe_filename = filename.rsplit('.', 1)[0] + '.txt'
+                if file.filename.rsplit('.', 1)[1].lower() != 'txt':
+                    converted_content = convert_to_txt(file)
+                    with open(safe_filename, 'w') as txt_file:
+                        txt_file.write(converted_content)
+                else:
+                    file.save(safe_filename)
     return render_template('upload.html')
 
 @app.route('/get_files', methods=['GET'])
