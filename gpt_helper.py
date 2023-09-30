@@ -25,7 +25,7 @@ def start_conversation(document_content, user_input):
     }
     user_message = {
         "role": "user",
-        "content": user_input + " " + document_content
+        "content": user_input + " " + "The document being analyzed: " + document_content
     }
     messages = [system_message, user_message]
 

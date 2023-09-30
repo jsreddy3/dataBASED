@@ -34,20 +34,38 @@ def get_files():
     uploaded_files = [f for f in os.listdir(UPLOAD_FOLDER) if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))]
     return jsonify({"files": uploaded_files})
 
-@app.route('/select_files', methods=['POST'])
-def select_files():
-    selected_files = request.json.get('selected_files', [])
-    first_file_content = ""
-    if selected_files:
-        with open(os.path.join(app.config['UPLOAD_FOLDER'], selected_files[0]), 'r') as file:
-            first_file_content = file.read()
-    return jsonify({"status": "success", "selected_files": selected_files, "first_file_content": first_file_content})
+@app.route('/get_file_content', methods=['POST'])
+def get_file_content():
+    try:
+        # Get the file name from the request
+        file_name = request.json.get('file_name')
+        
+        # Ensure the file name is provided and exists in the upload folder
+        if not file_name or not os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], file_name)):
+            return jsonify({"status": "error", "message": "File not found"}), 404
+        
+        # Read the file content
+        with open(os.path.join(app.config['UPLOAD_FOLDER'], file_name), 'r') as file:
+            content = file.read()
+        
+        return jsonify({"status": "success", "file_name": file_name, "content": content})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/select_file', methods=['POST'])
+def select_file():
+    selected_file = request.json.get('selected_file', str())
+    document_content = ""
+    if selected_file:
+        with open(os.path.join(app.config['UPLOAD_FOLDER'], selected_file), 'r') as file:
+            document_content = file.read()
+    session['document_content'] = document_content
+    return jsonify({"status": "success", "selected_file": selected_file, "document_content": document_content})
 
 @app.route('/initiate_conversation', methods=['POST'])
 def initiate_conversation():
-    document_content = request.json.get('document_content')
     user_input = request.json.get('user_input')
-    session['document_content'] = document_content
+    document_content = session['document_content']
     session['confirmed_fields'] = set()
     session['rejected_fields'] = set()
     session['conversation_history'] = [user_input]
@@ -166,8 +184,8 @@ def complete_doc_fields():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/update_examples', methods=['POST'])
-def update_examples():
+@app.route('/update_mappings', methods=['POST'])
+def update_mappings():
     refined_output = request.json.get('refined_output')
     document_name = refined_output.get('document_name')
 
