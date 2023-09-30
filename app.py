@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify, session
 from converters import convert_to_txt
-from gpt_helper import start_conversation, refine_fields
+from gpt_helper import start_conversation, refine_fields, doc_to_fields
 import os
 
 UPLOAD_FOLDER = 'uploads'
@@ -77,6 +77,43 @@ def handle_field_refinement():
     session['conversation_history'].append(response["naturalResponse"])  # Add model's response to conversation history
 
     return jsonify(response)
+
+@app.route('/create_doc_fields', methods=['POST'])
+def create_doc_fields():
+    document_name = request.json.get('document_name')
+    document_path = os.path.join(app.config['UPLOAD_FOLDER'], document_name)
+    
+    with open(document_path, 'r') as doc_file:
+        document_content = doc_file.read()
+    
+    fields_mapping = doc_to_fields(document_content, session.get('examples', []))
+    
+    # Format for the response
+    response_data = {
+        "document_name": document_name,
+        "document_content": document_content,
+        "fields_mapping": fields_mapping
+    }
+
+    # We might want to store the initial mapping for the document in the session for reference
+    if 'initial_mappings' not in session:
+        session['initial_mappings'] = {}
+    session['initial_mappings'][document_name] = fields_mapping
+    
+    return jsonify(response_data)
+
+@app.route('/update_examples', methods=['POST'])
+def update_examples():
+    refined_output = request.json.get('refined_output')
+    document_name = refined_output.get('document_name')
+
+    # Replace the existing example with the refined one
+    if 'examples' not in session:
+        session['examples'] = {}
+    session['examples'][document_name] = refined_output
+
+    return jsonify({"status": "success", "message": "Example updated."})
+
 
 
 if __name__ == '__main__':
