@@ -42,65 +42,128 @@ def select_files():
             first_file_content = file.read()
     return jsonify({"status": "success", "selected_files": selected_files, "first_file_content": first_file_content})
 
-@app.route('/start_conversation', methods=['POST'])
+@app.route('/initiate_conversation', methods=['POST'])
 def initiate_conversation():
     document_content = request.json.get('document_content')
     user_input = request.json.get('user_input')
     session['document_content'] = document_content
-    session['confirmed_fields'] = []
-    session['rejected_fields'] = []
-    session['suggested_fields'] = []
+    session['confirmed_fields'] = set()
+    session['rejected_fields'] = set()
     session['conversation_history'] = [user_input]
 
     response = start_conversation(document_content, user_input)
     
-    session['suggested_fields'].extend(response['fields'])
-    session['conversation_history'].append(response["naturalResponse"])  # Add model's response to conversation history
+    session['suggested_fields'] = set(response['fields'])
+    session['conversation_history'].append(response["naturalResponse"])
 
     return jsonify(response)
 
-@app.route('/refine_fields', methods=['POST'])
-def handle_field_refinement():
+@app.route('/handle_user_message', methods=['POST'])
+def handle_user_message():
     user_input = request.json.get('user_input')
-    confirmed_fields = request.json.get('confirmed_fields', [])
-    rejected_fields = request.json.get('rejected_fields', [])
-
-    # Update session's conversation history, confirmed and rejected fields
     session['conversation_history'].append(user_input)
-    session['confirmed_fields'].extend(confirmed_fields)
-    session['rejected_fields'].extend(rejected_fields)
-    session['suggested_fields'] = list(set(session['suggested_fields']) - set(confirmed_fields + rejected_fields))
     
     response = refine_fields(session, user_input)
-
-    session['suggested_fields'].extend(response['fields'])
-    session['conversation_history'].append(response["naturalResponse"])  # Add model's response to conversation history
+    
+    # Update the suggested fields based on the response
+    new_suggested_fields = set(response['fields'])
+    session['suggested_fields'] |= new_suggested_fields
+    session['suggested_fields'] -= session['confirmed_fields']
+    session['suggested_fields'] -= session['rejected_fields']
+    
+    session['conversation_history'].append(response["naturalResponse"])
 
     return jsonify(response)
 
-@app.route('/create_doc_fields', methods=['POST'])
-def create_doc_fields():
-    document_name = request.json.get('document_name')
-    document_path = os.path.join(app.config['UPLOAD_FOLDER'], document_name)
-    
-    with open(document_path, 'r') as doc_file:
-        document_content = doc_file.read()
-    
-    fields_mapping = doc_to_fields(document_content, session.get('examples', []))
-    
-    # Format for the response
-    response_data = {
-        "document_name": document_name,
-        "document_content": document_content,
-        "fields_mapping": fields_mapping
-    }
+@app.route('/swap_document', methods=['POST'])
+def swap_document():
+    try:
+        # Get the new document name from the request
+        document_name = request.json.get('document_name')
+        
+        # Load the new document content
+        document_path = os.path.join(app.config['UPLOAD_FOLDER'], document_name)
+        with open(document_path, 'r') as doc_file:
+            session['document_content'] = doc_file.read()
 
-    # We might want to store the initial mapping for the document in the session for reference
-    if 'initial_mappings' not in session:
-        session['initial_mappings'] = {}
-    session['initial_mappings'][document_name] = fields_mapping
+        # Clear or update any other session data related to the previous document if necessary
+        # For instance, you might want to reset or retain suggested_fields, confirmed_fields, etc.
+
+        return jsonify({"status": "success", "message": f"Switched to document: {document_name}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/modify_fields', methods=['POST'])
+def modify_fields():
+    confirmed_fields = set(request.json.get('confirmed_fields', []))
+    rejected_fields = set(request.json.get('rejected_fields', []))
+    suggested_fields = set(request.json.get('suggested_fields', []))
+
+    session['confirmed_fields'] |= confirmed_fields
+    session['confirmed_fields'] -= (rejected_fields)
     
-    return jsonify(response_data)
+    session['rejected_fields'] |= rejected_fields
+    session['rejected_fields'] -= (confirmed_fields | suggested_fields)
+    
+    session['suggested_fields'] |= suggested_fields
+    session['suggested_fields'] -= (confirmed_fields | rejected_fields)
+
+    # Return the updated fields to the client
+    return jsonify({
+        "confirmed_fields": list(session['confirmed_fields']),
+        "rejected_fields": list(session['rejected_fields']),
+        "suggested_fields": list(session['suggested_fields'])
+    })
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"status": "error", "message": "Internal Server Error"}), 500
+
+@app.route('/get_confirmed_fields', methods=['GET'])
+def get_confirmed_fields():
+    return jsonify({"confirmed_fields": list(session.get('confirmed_fields', set()))})
+
+@app.route('/get_rejected_fields', methods=['GET'])
+def get_rejected_fields():
+    return jsonify({"rejected_fields": list(session.get('rejected_fields', set()))})
+
+@app.route('/get_suggested_fields', methods=['GET'])
+def get_suggested_fields():
+    return jsonify({"suggested_fields": list(session.get('suggested_fields', set()))})
+
+@app.route('/get_examples', methods=['GET'])
+def get_examples():
+    return jsonify({"examples": session.get('examples', {})})
+
+# Updated complete_doc_fields with error handling
+@app.route('/complete_doc_fields', methods=['POST'])
+def complete_doc_fields():
+    try:
+        document_name = request.json.get('document_name')
+        document_path = os.path.join(app.config['UPLOAD_FOLDER'], document_name)
+    
+        with open(document_path, 'r') as doc_file:
+            document_content = doc_file.read()
+    
+        fields_mapping = doc_to_fields(document_content, session.get('examples', []))
+    
+        # Format for the response
+        response_data = {
+            "document_name": document_name,
+            "document_content": document_content,
+            "fields_mapping": fields_mapping
+        }
+
+        # We might want to store the initial mapping for the document in the session for reference
+        if 'initial_mappings' not in session:
+            session['initial_mappings'] = {}
+        session['initial_mappings'][document_name] = fields_mapping
+    
+        return jsonify(response_data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/update_examples', methods=['POST'])
 def update_examples():

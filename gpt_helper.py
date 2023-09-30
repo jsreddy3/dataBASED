@@ -4,26 +4,18 @@ import time
 import os
 
 openai.api_key = os.environ.get('OPENAI_API_KEY')
-HIGH_LEVEL_OVERVIEW = "You are being used as a tool to help in a project allowing users to transform numerous pages of unstructured text data into a queryable database. In order to do this, the user uploads lots of individual files, each of the same classification. They then describe the nature of the file, and in conversation with you, they identify fields by which the file can be summarized in a database. For example, they might upload the text of an insurance report and together, you and the user might, in conversation, identify the fields of customer, company, insurance claim type, etc. Your current task: "
+HIGH_LEVEL_OVERVIEW = "You are being used as a tool to help in a project allowing users to transform numerous pages of unstructured text data into a queryable database. In order to do this, the user uploads lots of individual files, each of the same classification. They then describe the nature of the file, and in conversation with you, they identify fields by which the file can be summarized in a database. For example, they might upload the text of an insurance report and together, you and the user might, in conversation, identify the fields of customer, company, insurance claim type, etc. After that, you are used to identify information from each file which fits within the given field and return a completed structured dictionary with information from each field. The user will then give feedback on your structured dictionary for three or four examples. Once the user has finalized those examples, you will run over all documents and create a structured format for them all. Your current task: "
 
 def start_conversation(document_content, user_input):
     """
-    Short Explanation:
-    - Initiates a conversation with the model to identify potential fields in the given document.
-  
-    Parameters:
-    - document_content (str): The content of the document that the user uploaded.
-    - user_input (str): The user's description or context about the document type.
-  
-    Return Values:
-    - A dictionary containing:
-      - fields: A list of potential fields identified from the document.
-      - descriptions: A list of descriptions or context about the identified fields.
-      - naturalResponse: A natural language response from the model about the identified fields.
+    Begins conversation with model to identify fields in document.
     
-    Usage:
-    - Called by the main application (e.g., Flask route) when a user uploads a document and provides a description. 
-      Used to start the process of identifying fields in the document.
+    Parameters:
+    - document_content (str): Uploaded document content.
+    - user_input (str): User's description of the document.
+    
+    Returns:
+    - Dictionary of fields, descriptions, and a natural language response.
     """
 
     # Initial function call to identify fields
@@ -71,23 +63,14 @@ def start_conversation(document_content, user_input):
 
 def refine_fields(session_data, user_input):
     """
-    Short Explanation:
-    - Refines the identified fields based on the ongoing conversation and feedback from the user.
-  
-    Parameters:
-    - session_data (dict): Contains data from the current user session including document content, 
-      conversation history, and lists of confirmed, rejected, and suggested fields.
-    - user_input (str): The user's feedback or additional information about refining the fields.
-  
-    Return Values:
-    - A dictionary containing:
-      - fields: A list of refined fields after taking into account user feedback.
-      - descriptions: A list of descriptions or context about the refined fields.
-      - naturalResponse: A natural language response from the model about the refined fields.
+    Refines identified fields based on user feedback.
     
-    Usage:
-    - Called by the main application after initial fields have been suggested and the user provides feedback. 
-      Used to refine and improve the field suggestions based on user input.
+    Parameters:
+    - session_data (dict): Data from the current user session.
+    - user_input (str): User's feedback.
+    
+    Returns:
+    - Dictionary of refined fields, descriptions, and a natural language response.
     """
 
     # Build the system and user messages with session data
@@ -141,17 +124,18 @@ def refine_fields(session_data, user_input):
     
     return response
 
-def doc_to_fields(document_content, finalized_fields, examples=[]):
+def doc_to_fields(document_content, finalized_fields, session_data, examples=[]):
     """
-    Uses the OpenAI API to extract field values from a given document.
+    Extracts field values from a document.
     
     Parameters:
-    - document_content (str): The content of the document from which fields are to be extracted.
-    - finalized_fields (list): List of fields that have been finalized and need values extracted.
-    - examples (list, optional): List of existing examples of documents and their field mappings.
+    - document_content (str): Document content.
+    - finalized_fields (list): Fields to extract.
+    - session_data (dict): Current user session data.
+    - examples (list, optional): Previous field mappings.
     
-    Return Values:
-    - A dictionary mapping field names to their extracted values from the document.
+    Returns:
+    - Dictionary mapping fields to extracted values.
     """
 
     # Filtering out the current document from the examples, if it exists.
@@ -171,12 +155,19 @@ def doc_to_fields(document_content, finalized_fields, examples=[]):
     # Message structure
     system_message = {
         "role": "system",
-        "content": HIGH_LEVEL_OVERVIEW + "Extract the values for the provided fields from the given document."
+        "content": HIGH_LEVEL_OVERVIEW + "Given the entire conversation history, extract the values for the provided fields from the document."
     }
+    
+    conversation_history = "\n".join(session_data.get('conversation_history', []))
+    confirmed_fields = ", ".join(session_data.get('confirmed_fields', []))
+    rejected_fields = ", ".join(session_data.get('rejected_fields', []))
+    suggested_fields = ", ".join(session_data.get('suggested_fields', []))
+    
     user_message = {
         "role": "user",
-        "content": document_content
+        "content": f"{conversation_history} Confirmed fields: {confirmed_fields}. Rejected fields: {rejected_fields}. Suggested fields: {suggested_fields}. Document content: {document_content}"
     }
+    
     messages = [system_message, user_message]
 
     # Call to OpenAI API
@@ -185,26 +176,19 @@ def doc_to_fields(document_content, finalized_fields, examples=[]):
     return fields_mapping
 
 
+
 def call_openai(messages, function_info=None, max_retries=1, wait_time=1):
     """
-    Short Explanation:
-    - Interfaces with the OpenAI API to either perform a function call or get a natural language response.
-  
-    Parameters:
-    - messages (list): A list of message objects (dicts) that model a conversation. Each message object has a 
-      role ("system", "user", or "assistant") and content (the message content).
-    - function_info (dict, optional): Contains information about a function that the model should perform. 
-      If not provided, a natural language response is expected from the model.
-    - max_retries (int, optional): Number of retries in case of API issues. Default is 1.
-    - wait_time (int, optional): Time to wait between retries. Default is 1 second.
-  
-    Return Values:
-    - If function_info is provided: A dictionary containing the results of the function call.
-    - If function_info is not provided: A string containing the model's natural language response.
+    Communicates with OpenAI API for results.
     
-    Usage:
-    - A utility function used internally by other functions like start_conversation and refine_fields to 
-      communicate with the OpenAI API and get results.
+    Parameters:
+    - messages (list): Messages modeling a conversation.
+    - function_info (dict, optional): Info about a function for the model.
+    - max_retries (int, optional): API retries. Default is 1.
+    - wait_time (int, optional): Time between retries. Default is 1s.
+    
+    Returns:
+    - Results from the OpenAI API.
     """
 
     functions = [function_info] if function_info else []
