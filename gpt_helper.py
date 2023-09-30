@@ -155,7 +155,7 @@ def doc_to_fields(document_content, finalized_fields, session_data, examples=[])
     # Message structure
     system_message = {
         "role": "system",
-        "content": HIGH_LEVEL_OVERVIEW + "Given the entire conversation history, extract the values for the provided fields from the document."
+        "content": HIGH_LEVEL_OVERVIEW + "Given the entire conversation history, document content, and fields, extract the values for the provided fields from the document. Remember, you want to create a pretty comprehensive condensation of the unstructured data contained in the form of this document in a structured format. However, if some fields do not have corresponding data to be found in the document, leave them empty."
     }
     
     conversation_history = "\n".join(session_data.get('conversation_history', []))
@@ -171,13 +171,13 @@ def doc_to_fields(document_content, finalized_fields, session_data, examples=[])
     messages = [system_message, user_message]
 
     # Call to OpenAI API
-    fields_mapping = call_openai(messages, function_info)
+    fields_mapping = call_openai(messages, function_info, examples=examples)
 
     return fields_mapping
 
 
 
-def call_openai(messages, function_info=None, max_retries=1, wait_time=1):
+def call_openai(messages, function_info=None, max_retries=1, wait_time=1, examples=[]):
     """
     Communicates with OpenAI API for results.
     
@@ -186,12 +186,21 @@ def call_openai(messages, function_info=None, max_retries=1, wait_time=1):
     - function_info (dict, optional): Info about a function for the model.
     - max_retries (int, optional): API retries. Default is 1.
     - wait_time (int, optional): Time between retries. Default is 1s.
+    - examples (list, optional): Previous field mappings.
     
     Returns:
     - Results from the OpenAI API.
     """
 
     functions = [function_info] if function_info else []
+    
+    # Incorporate examples into the conversation
+    for example in examples:
+        example_message = {
+            "role": "user",
+            "content": f"Document: {example['document']}. Fields: {json.dumps(example['fields'])}."
+        }
+        messages.append(example_message)
     
     retries = 0
     while retries < max_retries:
@@ -204,7 +213,11 @@ def call_openai(messages, function_info=None, max_retries=1, wait_time=1):
             if function_info:
                 function_call = response.choices[0].message.get('function_call', {})
                 if function_call:
-                    return json.loads(function_call['arguments'])
+                    arguments = function_call['arguments']
+                    if isinstance(arguments, str):
+                        return json.loads(arguments)
+                    else:
+                        return arguments
             else:
                 return response.choices[0].message.get('content', "")
         except json.JSONDecodeError:

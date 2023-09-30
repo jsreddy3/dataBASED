@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, jsonify, session
 from converters import convert_to_txt
 from gpt_helper import start_conversation, refine_fields, doc_to_fields
 import os
+import pandas as pd
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'doc', 'docx', 'rtf', 'html'}
@@ -177,6 +178,44 @@ def update_examples():
 
     return jsonify({"status": "success", "message": "Example updated."})
 
+
+@app.route('/bulk_process', methods=['POST'])
+def bulk_process_documents():
+    try:
+        processed_data = []
+        
+        # Iterate through all uploaded documents
+        for document_name in os.listdir(app.config['UPLOAD_FOLDER']):
+            document_path = os.path.join(app.config['UPLOAD_FOLDER'], document_name)
+            
+            with open(document_path, 'r') as doc_file:
+                document_content = doc_file.read()
+            
+            # Extract field values using the finalized fields and examples
+            fields_mapping = doc_to_fields(document_content, session.get('confirmed_fields', []), session, examples=session.get('examples', []))
+            processed_data.append(fields_mapping)
+        
+        return jsonify({"status": "success", "data": processed_data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/save_to_excel', methods=['POST'])
+def save_to_excel():
+    try:
+        # Get processed data (you could also call the bulk_process_documents function here)
+        response = bulk_process_documents()
+        processed_data = response.json.get('data', [])
+
+        # Convert to DataFrame
+        df = pd.DataFrame(processed_data)
+
+        # Save to Excel
+        excel_path = "/path/to/save/excel/file.xlsx"  # Modify this path as required
+        df.to_excel(excel_path, index=False)
+
+        return jsonify({"status": "success", "message": f"Data saved to {excel_path}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == '__main__':
