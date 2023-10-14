@@ -1,0 +1,26 @@
+[
+    {
+        "disaster type":"Forest Fire",
+        "prevention measures": "Regular controlled burns, Creating firebreaks, Proper disposal of cigarettes and matches, Restrictions on open flames in vulnerable areas, Public awareness campaigns.",
+        "regions of impact": "Areas with dense forests, especially during dry seasons, such as California, Australia, Amazon rainforest, Mediterranean regions.",
+        "emergency response": "Evacuation of threatened areas, Mobilizing firefighting resources, Air drops of water and fire retardants.",
+        "safety equipment": "Fire-resistant clothing, Masks or respirators to protect against inhalation of smoke and ash, Fire shelters for emergency situations for firefighters, Fire engines with large amounts of water.",
+        "environmental factors": "Extended dry periods, High temperatures, Accumulation of dry fallen leaves and wood, Strong winds."
+    },
+    {
+        "disaster type": "Tornado",
+        "prevention measures": "Be prepared with the following items: Fresh batteries and a battery-operated TV, radio, or internet-enabled device to listen to the latest emergency weather information. A tornado emergency plan including access to a safe shelter for yourself, your family, people with special needs, and your pets. An emergency kit (including water, non-perishable food, and medication). A list of important information, including telephone numbers.",
+        "regions of impact": "Locations across the country, especially Tornado Alley in the USA which includes parts of Texas, Oklahoma, Kansas, and Nebraska.",
+        "emergency response": "Stay aware of weather conditions, know the best places to shelter both indoors and outdoors, and always protect yourself from injury, especially your head.",
+        "safety equipment": "Fresh batteries and a battery-operated TV, radio, or internet-enabled device to listen to the latest emergency weather information. An emergency kit (including water, non-perishable food, and medication). A helmet for head protection.",
+        "environmental factors": "Tornadoes continue to impact locations across the country every year, bringing massive winds and destruction of properties in their paths."
+    },
+    {
+        "disaster type": "Hurricane",
+        "prevention measures": "Make a Plan, Secure properties with hurricane shutters, Trim trees and shrubs to make them more wind-resistant, Reinforce roofs, windows, and doors, including the garage doors.",
+        "regions of impact": "North Pacific, Atlantic, Caribbean, Gulf of Mexico, Southeastern USA.",
+        "emergency response": "Evacuation, Emergency supply kit, Emergency phone numbers, Shelter locations, Pet-friendly shelters, Staying informed with the latest weather updates.",
+        "safety equipment": "Flashlights, Fire extinguisher, First aid kit, Batteries, Battery-operated or hand-cranked radio, Canned food and a manual can opener, Bottled water.",
+        "environmental factors": "Power and water supply disruption, Flooding, Coastal erosion, Strong winds, Heavy rainfall."
+    }
+]

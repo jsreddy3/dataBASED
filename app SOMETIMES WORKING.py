@@ -4,7 +4,6 @@ from converters import convert_to_txt
 from gpt_helper import start_conversation, refine_fields, doc_to_fields
 import os
 import pandas as pd
-import json
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'doc', 'docx', 'rtf', 'html'}
@@ -65,7 +64,7 @@ def get_file_content():
 def select_file():
     selected_file = request.json.get('selected_file', str())
     document_content = sesh.get('document_content', "")
-    # print('first document_content: ', document_content)
+    print('first document_content: ', document_content)
 
     # If sesh does not have content, fetch from file
     if not document_content and selected_file:
@@ -86,7 +85,7 @@ def select_file():
 
 @app.route('/initiate_conversation', methods=['POST'])
 def initiate_conversation():
-    # print(sesh)
+    print(sesh)
     # print('initiated sesh content', sesh['document_content'])
     user_input = request.json.get('user_input')
     document_content = sesh.get('document_content')
@@ -185,7 +184,11 @@ def complete_doc_fields():
 
     with open(document_path, 'r') as doc_file:
         document_content = doc_file.read()
+    print("document content: \n")
+    print('SESH', sesh)
     fields_mapping = doc_to_fields(document_content, request.json.get('finalized_fields'), [])
+    print("fields mapping: \n")
+    print(fields_mapping)
     # Format for the response
     response_data = {
         "document_name": document_name,
@@ -200,6 +203,19 @@ def complete_doc_fields():
 
     return jsonify(response_data)
 
+@app.route('/update_mappings', methods=['POST'])
+def update_mappings():
+    refined_output = request.json.get('refined_output')
+    document_name = refined_output.get('document_name')
+
+    # Replace the existing example with the refined one
+    if 'examples' not in sesh:
+        sesh['examples'] = {}
+    sesh['examples'][document_name] = refined_output
+
+    return jsonify({"status": "success", "message": "Example updated."})
+
+
 @app.route('/bulk_process', methods=['POST'])
 def bulk_process_documents():
     try:
@@ -213,12 +229,9 @@ def bulk_process_documents():
                 document_content = doc_file.read()
             
             # Extract field values using the finalized fields and examples
-            fields_mapping = doc_to_fields(document_content, request.json.get('finalized_fields'), [])
+            fields_mapping = doc_to_fields(document_content, sesh.get('confirmed_fields', []), sesh, examples=sesh.get('examples', []))
             processed_data.append(fields_mapping)
         
-        with open('processed_data.json', 'w') as outfile:
-            json.dump(processed_data, outfile, indent=4)
-
         return jsonify({"status": "success", "data": processed_data})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -240,18 +253,6 @@ def save_to_excel():
         return jsonify({"status": "success", "message": f"Data saved to {excel_path}"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/update_mappings', methods=['POST'])
-def update_mappings():
-    refined_output = request.json.get('refined_output')
-    document_name = refined_output.get('document_name')
-
-    # Replace the existing example with the refined one
-    if 'examples' not in sesh:
-        sesh['examples'] = {}
-    sesh['examples'][document_name] = refined_output
-
-    return jsonify({"status": "success", "message": "Example updated."})
 
 
 if __name__ == '__main__':
