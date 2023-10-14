@@ -1,0 +1,9 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore environment files or secrets
+.env
+
+# Ignore operating system generated files
+.DS_Store  # for macOS
+Thumbs.db  # for Windowsx
